@@ -13,10 +13,19 @@ import path from "path";
 
 let babelHelpers = eval(buildExternalHelpers(null, "var"));
 
-function wrapPackagesArray(type, names) {
+function wrapPackagesArray(type, names, taskDir) {
   return (names || []).map(function (val) {
     if (typeof val === "string") val = [val];
-    val[0] = __dirname + "/../../babel-" + type + "-" + val[0];
+
+    // relative path (outside of monorepo)
+    if (val[0][0] === ".") {
+      val[0] = `${taskDir}${val[0]}`;
+    }
+    // check node_modules/babel-x-y
+    else {
+      val[0] = __dirname + "/../../babel-" + type + "-" + val[0];
+    }
+
     return val;
   });
 }
@@ -31,9 +40,10 @@ function run(task) {
     let newOpts = _.merge({
       filename: self.loc,
     }, opts);
+    let taskDir = self.loc.replace(/\w+\.js$/, "");
 
-    newOpts.plugins = wrapPackagesArray("plugin", newOpts.plugins);
-    newOpts.presets = wrapPackagesArray("preset", newOpts.presets).map(function (val) {
+    newOpts.plugins = wrapPackagesArray("plugin", newOpts.plugins, taskDir);
+    newOpts.presets = wrapPackagesArray("preset", newOpts.presets, taskDir).map(function (val) {
       if (val.length > 2) {
         throw new Error(`Unexpected extra options ${JSON.stringify(val.slice(2))} passed to preset.`);
       }
